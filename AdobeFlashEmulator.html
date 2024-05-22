@@ -3,110 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ruffle Flash Emulator</title>
-    <!-- Include the Ruffle JS from CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@ruffle-rs/ruffle@0.1.0-nightly.2024.5.18/ruffle.min.js"></script>
+    <title>Flash Player</title>
+    <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
     <style>
-        body {
+        body, html {
             margin: 0;
-            background-color: #f0f0f0;
-            height: 100vh;
+            padding: 0;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000;
         }
         #flash-container {
             width: 100vw;
             height: 100vh;
-            border: none;
             background-color: #fff;
             position: relative;
+            will-change: transform;
+            transform: translateZ(0);
+            background: black;
+            align-items: center;
+            justify-content: center;
         }
         ruffle-player {
             width: 100%;
             height: 100%;
         }
-        #choose-file-btn {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            background-color: #007bff;
-            color: #fff;
-            border: none;
-            padding: 5px 10px;
-            font-size: 14px;
-            cursor: pointer;
-            border-radius: 5px;
-            z-index: 1;
-            user-select: none; /* Prevent text selection */
-        }
-        #choose-file-btn:hover {
-            background-color: #0056b3;
+        #file-input {
+            display: none;
         }
     </style>
 </head>
 <body>
-    <!-- Container for the SWF file -->
     <div id="flash-container"></div>
-    <!-- Button for choosing SWF file -->
-    <button id="choose-file-btn">ඞ</button>
-    <!-- Hidden file input element -->
-    <input type="file" id="file-input" accept=".swf" style="display:none;">
+    <input type="file" id="file-input" accept=".swf">
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            // Load the Ruffle player
             const ruffle = window.RufflePlayer.newest();
             const player = ruffle.createPlayer();
             const container = document.getElementById("flash-container");
 
-            const fileInput = document.getElementById('file-input');
-            const chooseFileBtn = document.getElementById('choose-file-btn');
-
             container.appendChild(player);
 
-            // Variables for dragging functionality
-            let offsetX, offsetY, originalWidth, originalHeight, isDragging = false;
+            // Load last game from local storage if available
+            const lastGame = localStorage.getItem('lastGame');
+            const lastGameName = localStorage.getItem('lastGameName');
+            if (lastGame && lastGameName) {
+                loadGame(atob(lastGame));
+                document.title = lastGameName.replace(/\.swf$/i, ''); // Update title
+            }
 
-            chooseFileBtn.addEventListener('mousedown', (e) => {
-                e.preventDefault(); // Prevent default browser behavior for mousedown on button
-                offsetX = e.clientX - chooseFileBtn.getBoundingClientRect().left;
-                offsetY = e.clientY - chooseFileBtn.getBoundingClientRect().top;
-                originalWidth = chooseFileBtn.offsetWidth;
-                originalHeight = chooseFileBtn.offsetHeight;
-                isDragging = true;
-            });
+            function loadGame(fileData) {
+                try {
+                    const data = new Uint8Array(fileData.split('').map(char => char.charCodeAt(0)));
+                    player.load({ data });
+                } catch (error) {
+                    console.error("Failed to load the SWF file:", error);
+                    alert("Failed to load the SWF file. Please try another file.");
+                }
+            }
 
-            document.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    const newX = e.clientX - offsetX;
-                    const newY = e.clientY - offsetY;
-                    const maxX = window.innerWidth - chooseFileBtn.offsetWidth;
-                    const maxY = window.innerHeight - chooseFileBtn.offsetHeight;
-                    chooseFileBtn.style.left = `${Math.max(0, Math.min(newX, maxX))}px`;
-                    chooseFileBtn.style.top = `${Math.max(0, Math.min(newY, maxY))}px`;
-                    chooseFileBtn.style.width = `${originalWidth}px`;
-                    chooseFileBtn.style.height = `${originalHeight}px`;
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    // Clear the current game from localStorage
+                    localStorage.removeItem('lastGame');
+                    localStorage.removeItem('lastGameName');
+                    // Open file input
+                    document.getElementById('file-input').click();
                 }
             });
 
-            document.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
-
-            chooseFileBtn.addEventListener('click', () => {
-                fileInput.click();
-            });
-
-            fileInput.addEventListener('change', (event) => {
+            document.getElementById('file-input').addEventListener('change', (event) => {
                 const file = event.target.files[0];
                 if (file && file.name.endsWith('.swf')) {
                     const reader = new FileReader();
                     reader.onload = (e) => {
-                        const arrayBuffer = e.target.result;
-                        const swfData = new Uint8Array(arrayBuffer);
-                        player.load({ data: swfData });
-                        document.title = file.name; // Set the document title to the name of the selected file
+                        try {
+                            const result = e.target.result;
+                            loadGame(result);
+                            const fileName = file.name.replace(/\.swf$/i, '');
+                            document.title = fileName; // Set document title to filename without .swf extension
+                            localStorage.setItem('lastGame', btoa(result)); // Save last loaded game to local storage as base64
+                            localStorage.setItem('lastGameName', file.name); // Save the file name to local storage
+                        } catch (error) {
+                            console.error("Failed to load the SWF file:", error);
+                            alert("Failed to load the SWF file. Please try another file.");
+                        }
                     };
-                    reader.readAsArrayBuffer(file);
+                    reader.onerror = (error) => {
+                        console.error("Error reading the file:", error);
+                        alert("Error reading the SWF file. Please try again.");
+                    };
+                    reader.readAsBinaryString(file);
                 }
             });
         });
