@@ -1,4 +1,1 @@
-Cant open this on chromeOS for some reason.
-
-So basically this is a fully functional Adobe Flash Emulator i made!
-I hope you use and enjoy!
+This is an adobe flash emulator built off [ruffl.rs](https://ruffle.rs), and made entirely with HTML, JS, and CSS!
