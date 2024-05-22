@@ -25,8 +25,9 @@
             will-change: transform;
             transform: translateZ(0);
             background: black;
-            align-items: center;
+            display: flex;
             justify-content: center;
+            align-items: center;
         }
         ruffle-player {
             width: 100%;
@@ -49,17 +50,57 @@
 
             container.appendChild(player);
 
-            // Load last game from local storage if available
-            const lastGame = localStorage.getItem('lastGame');
-            const lastGameName = localStorage.getItem('lastGameName');
-            if (lastGame && lastGameName) {
-                loadGame(atob(lastGame));
-                document.title = lastGameName.replace(/\.swf$/i, ''); // Update title
+            const dbName = 'SWFDatabase';
+            const dbStoreName = 'swfStore';
+            let db;
+
+            function initDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open(dbName, 1);
+
+                    request.onupgradeneeded = (event) => {
+                        db = event.target.result;
+                        if (!db.objectStoreNames.contains(dbStoreName)) {
+                            db.createObjectStore(dbStoreName);
+                        }
+                    };
+
+                    request.onsuccess = (event) => {
+                        db = event.target.result;
+                        resolve(db);
+                    };
+
+                    request.onerror = (event) => {
+                        reject(event.target.error);
+                    };
+                });
+            }
+
+            function saveToIndexedDB(key, data) {
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([dbStoreName], 'readwrite');
+                    const store = transaction.objectStore(dbStoreName);
+                    const request = store.put(data, key);
+
+                    request.onsuccess = () => resolve();
+                    request.onerror = (event) => reject(event.target.error);
+                });
+            }
+
+            function loadFromIndexedDB(key) {
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction([dbStoreName], 'readonly');
+                    const store = transaction.objectStore(dbStoreName);
+                    const request = store.get(key);
+
+                    request.onsuccess = (event) => resolve(event.target.result);
+                    request.onerror = (event) => reject(event.target.error);
+                });
             }
 
             function loadGame(fileData) {
                 try {
-                    const data = new Uint8Array(fileData.split('').map(char => char.charCodeAt(0)));
+                    const data = new Uint8Array(fileData);
                     player.load({ data });
                 } catch (error) {
                     console.error("Failed to load the SWF file:", error);
@@ -67,11 +108,26 @@
                 }
             }
 
+            initDB().then(() => {
+                loadFromIndexedDB('lastGame').then((fileData) => {
+                    if (fileData) {
+                        loadGame(fileData);
+                        loadFromIndexedDB('lastGameName').then((fileName) => {
+                            if (fileName) {
+                                document.title = fileName.replace(/\.swf$/i, ''); // Update title
+                            }
+                        });
+                    }
+                });
+            });
+
             document.addEventListener('keydown', (event) => {
                 if (event.key === 'Enter') {
-                    // Clear the current game from localStorage
-                    localStorage.removeItem('lastGame');
-                    localStorage.removeItem('lastGameName');
+                    // Clear the current game from IndexedDB
+                    const transaction = db.transaction([dbStoreName], 'readwrite');
+                    const store = transaction.objectStore(dbStoreName);
+                    store.delete('lastGame');
+                    store.delete('lastGameName');
                     // Open file input
                     document.getElementById('file-input').click();
                 }
@@ -87,8 +143,8 @@
                             loadGame(result);
                             const fileName = file.name.replace(/\.swf$/i, '');
                             document.title = fileName; // Set document title to filename without .swf extension
-                            localStorage.setItem('lastGame', btoa(result)); // Save last loaded game to local storage as base64
-                            localStorage.setItem('lastGameName', file.name); // Save the file name to local storage
+                            saveToIndexedDB('lastGame', result); // Save last loaded game to IndexedDB
+                            saveToIndexedDB('lastGameName', file.name); // Save the file name to IndexedDB
                         } catch (error) {
                             console.error("Failed to load the SWF file:", error);
                             alert("Failed to load the SWF file. Please try another file.");
@@ -98,7 +154,7 @@
                         console.error("Error reading the file:", error);
                         alert("Error reading the SWF file. Please try again.");
                     };
-                    reader.readAsBinaryString(file);
+                    reader.readAsArrayBuffer(file); // Use readAsArrayBuffer for proper data handling
                 }
             });
         });
