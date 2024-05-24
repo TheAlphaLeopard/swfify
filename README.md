@@ -14,6 +14,6 @@ Have fun!
 
 Links:
 1. [My Github](github.com/TheAlphaLeopard)
-2. [My X]((https://x.com/D4373305294416))
+2. [My X](https://x.com/D4373305294416)
 3. My Youtube
 
