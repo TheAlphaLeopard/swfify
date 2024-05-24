@@ -1,9 +1,16 @@
-This Adobe Flash emulator is built off [ruffl.rs](https://ruffle.rs) and made entirely with HTML, JS, and CSS!
+This is [Swfify](https://github.com/TheAlphaLeopard/swfify)! An Adobe Flash emulator/player built using[ruffle.rs](ruffle.rs)!
+I made this because I was bored and found a bunch of flash games, but the ruffle.rs demo was booooriiing...
 
-THE JOURNEY:
+Instructions:
+1. Download the .zip folder
+2. Extract the .zip folder
+3. Open the .html file
+4. Start playing your flash games!
 
-It was simple at first, you had a button and you clicked on it to open a .swf file.
-Then I realized it would be easier to press the enter key! Not only did this simplify the player but it made it run at least 1 FPS faster!
-Then my friends kept begging for saving so, it took me a while but I added saving via localStorage!
-If you have any problems, suggestions, feedback, etc. Then hit me up and I'll respond!
-Im going to keep making this project better and better!
+Notes:
+Press the enter key to open up a .swf file!
+You don't have to have multiple tabs of it open, it saves your progress with each .swf file! (*NOTE: Saves when your computer is on, if your computer is turned off or closed progress will be deleted.)
+Have fun!
+
+Links:
+[My Github](github.com/TheAlphaLeopard)
