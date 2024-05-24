@@ -8,9 +8,12 @@ Instructions:
 4. Start playing your flash games!
 
 Notes:
-Press the enter key to open up a .swf file!
-You don't have to have multiple tabs of it open, it saves your progress with each .swf file! (*NOTE: Saves when your computer is on, if your computer is turned off or closed progress will be deleted.)
+1. When you are on the .HTML file, Press the enter key to open up a .swf file!
+2. You don't have to have multiple tabs of it open, it saves your progress with each .swf file! (*NOTE: Saves when your computer is on, if your computer is turned off or closed progress will be deleted.)
 Have fun!
 
 Links:
-[My Github](github.com/TheAlphaLeopard)
+1. [My Github](github.com/TheAlphaLeopard)
+2. My X
+3. My Youtube
+
