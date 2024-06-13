@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flash Player</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jeff@2.0.0/dist/jeff.min.js"></script>
     <style>
         body, html {
             margin: 0;
@@ -40,6 +42,104 @@
 <body>
     <div id="flash-container"></div>
     <input type="file" id="file-input" accept=".swf">
-    <script src="flashplayer.js"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            const ruffle = window.RufflePlayer.newest();
+            const player = ruffle.createPlayer();
+            const container = document.getElementById("flash-container");
+            container.appendChild(player);
+
+            // Initialize IndexedDB
+            let db;
+            const request = indexedDB.open("FlashPlayerDB", 1);
+            request.onupgradeneeded = event => {
+                db = event.target.result;
+                db.createObjectStore("games", { keyPath: "name" });
+            };
+            request.onsuccess = event => {
+                db = event.target.result;
+                loadLastGame();
+            };
+            request.onerror = event => {
+                console.error("Database error:", event.target.errorCode);
+            };
+
+            async function saveGame(name, data) {
+                const transaction = db.transaction("games", "readwrite");
+                const store = transaction.objectStore("games");
+                const game = { name, data };
+                store.put(game);
+                transaction.oncomplete = () => console.log("Game saved successfully.");
+                transaction.onerror = event => console.error("Error saving game:", event.target.error);
+            }
+
+            async function loadGameFromDB(name) {
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction("games", "readonly");
+                    const store = transaction.objectStore("games");
+                    const request = store.get(name);
+                    request.onsuccess = () => resolve(request.result ? request.result.data : null);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async function loadGame(fileData) {
+                try {
+                    const jeffResult = await Jeff.compile(fileData, { worker: true });
+                    const jsonContent = JSON.stringify(jeffResult);
+                    player.load({ data: jsonContent });
+                } catch (error) {
+                    console.error("Failed to load the SWF file:", error);
+                    alert("Failed to load the SWF file. Please try another file.");
+                }
+            }
+
+            async function loadLastGame() {
+                const lastGameName = localStorage.getItem('lastGameName');
+                if (lastGameName) {
+                    const fileData = await loadGameFromDB(lastGameName);
+                    if (fileData) {
+                        loadGame(fileData);
+                        document.title = lastGameName.replace(/\.swf$/i, '');
+                    }
+                }
+            }
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    // Clear the current game from localStorage
+                    localStorage.removeItem('lastGameName');
+                    // Open file input
+                    document.getElementById('file-input').click();
+                }
+            });
+
+            document.getElementById('file-input').addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file && file.name.endsWith('.swf')) {
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            const result = e.target.result;
+                            await loadGame(result);
+                            const fileName = file.name.replace(/\.swf$/i, '');
+                            document.title = fileName;
+                            await saveGame(file.name, result); // Save last loaded game to IndexedDB
+                            localStorage.setItem('lastGameName', file.name);
+                        } catch (error) {
+                            console.error("Failed to load the SWF file:", error);
+                            alert("Failed to load the SWF file. Please try another file.");
+                        }
+                    };
+                    reader.onerror = (error) => {
+                        console.error("Error reading the file:", error);
+                        alert("Error reading the SWF file. Please try again.");
+                    };
+                    reader.readAsBinaryString(file);
+                }
+            });
+        });
+    </script>
 </body>
 </html>
