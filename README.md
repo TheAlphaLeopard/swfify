@@ -1,1 +1,1 @@
-COOL FLASH PLAYA MADE WIF JEFF AND RUFFLE
+a simple portable flash player that can be used to play flash games on a file:// format
