@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swfify 🌊</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="imgs/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="imgs/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="imgs/favicon-16x16.png">
+    <link rel="manifest" href="imgs/site.webmanifest">
+    <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000;
+        }
+        #flash-container {
+            width: 100vw;
+            height: 100vh;
+            background-color: #fff;
+            position: relative;
+            will-change: transform;
+            transform: translateZ(0);
+            background: black;
+            align-items: center;
+            justify-content: center;
+            background-image: url("imgs/background.png");
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        ruffle-player {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="flash-container"></div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Define your SWF source URL here
+            const SWF_SOURCE = 'https://thealphaleopard.github.io/games/swfify/gms/gmayhem2.swf';
+            
+            const ruffle = window.RufflePlayer.newest();
+            const player = ruffle.createPlayer();
+            const container = document.getElementById("flash-container");
+            container.appendChild(player);
+
+            // Initialize IndexedDB
+            let db;
+            const request = indexedDB.open("FlashPlayerDB", 1);
+            request.onupgradeneeded = event => {
+                db = event.target.result;
+                db.createObjectStore("games", { keyPath: "name" });
+            };
+            request.onsuccess = event => {
+                db = event.target.result;
+                loadLastGame();
+            };
+            request.onerror = event => {
+                console.error("Database error:", event.target.errorCode);
+            };
+
+            async function saveGame(name, data) {
+                const transaction = db.transaction("games", "readwrite");
+                const store = transaction.objectStore("games");
+                const game = { name, data };
+                store.put(game);
+                transaction.oncomplete = () => console.log("Game saved successfully.");
+                transaction.onerror = event => console.error("Error saving game:", event.target.error);
+            }
+
+            async function loadGameFromDB(name) {
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction("games", "readonly");
+                    const store = transaction.objectStore("games");
+                    const request = store.get(name);
+                    request.onsuccess = () => resolve(request.result ? request.result.data : null);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            async function loadLastGame() {
+                try {
+                    // Load the SWF directly using the source URL
+                    await player.load({ url: SWF_SOURCE });
+                    
+                    const fileName = SWF_SOURCE.split('/').pop();
+                    document.title = fileName.replace(/\.swf$/i, '');
+                    localStorage.setItem('lastGameName', fileName);
+                } catch (error) {
+                    console.error("Failed to load the SWF file:", error);
+                    alert("Failed to load the SWF file. Please check the source URL.");
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+<*-- You can change the link anytime, this one just uses gm2 for an example, also works offline/as a file --*>
