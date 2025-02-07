@@ -71,22 +71,70 @@
             border-radius: 5px;
             border: 1px solid #ccc;
         }
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+        .loading-screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .loading-spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        .loading-text {
+            color: white;
+            font-size: 18px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <div id="flash-container"></div>
     <input type="file" id="file-input" accept=".swf">
-   
+    
     <div id="selection-popup" class="popup">
+        <button class="close-btn">&times;</button>
         <p>Select an option:</p>
         <button id="file-option">File</button>
         <button id="link-option">Link</button>
     </div>
-   
+    
     <div id="link-popup" class="popup">
+        <button class="close-btn">&times;</button>
         <p>Enter the SWF file link:</p>
         <input type="text" id="swf-link" placeholder="https://example.com/file.swf">
         <button id="download-link">Download</button>
+    </div>
+    
+    <div class="loading-screen">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Loading SWF file...</div>
     </div>
 
     <script>
@@ -129,6 +177,14 @@
                 });
             }
 
+            function showLoadingScreen() {
+                document.querySelector('.loading-screen').style.display = 'flex';
+            }
+
+            function hideLoadingScreen() {
+                document.querySelector('.loading-screen').style.display = 'none';
+            }
+
             async function loadLastGame() {
                 const lastGameName = localStorage.getItem('lastGameName');
                 if (lastGameName) {
@@ -155,6 +211,15 @@
                 }
             });
 
+            document.querySelectorAll('.close-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const popup = btn.closest('.popup');
+                    if (popup) {
+                        hidePopup(popup.id);
+                    }
+                });
+            });
+
             document.getElementById('file-option').addEventListener('click', () => {
                 hidePopup('selection-popup');
                 document.getElementById('file-input').click();
@@ -169,11 +234,14 @@
                 const link = document.getElementById('swf-link').value;
                 if (link) {
                     try {
+                        hidePopup('link-popup');
+                        showLoadingScreen();
+                        
                         const response = await fetch(link);
                         if (!response.ok) throw new Error("Network response was not ok");
                         const arrayBuffer = await response.arrayBuffer();
                         
-                        player.load({ data: arrayBuffer });
+                        await player.load({ data: arrayBuffer });
 
                         const fileName = link.split('/').pop();
                         document.title = fileName.replace(/\.swf$/i, '');
@@ -183,11 +251,11 @@
                         await saveGame(fileName, binaryString);
                         localStorage.setItem('lastGameName', fileName);
                         
-                        hidePopup('link-popup');
                     } catch (error) {
                         console.error("Failed to download the SWF file:", error);
                         alert("Failed to download the SWF file. Please check the link and try again.");
-                        hidePopup('link-popup');
+                    } finally {
+                        hideLoadingScreen();
                     }
                 }
             });
