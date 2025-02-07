@@ -1,1 +1,2 @@
-a simple portable flash player that can be used to play flash games on a file:// format
+simple downloadable adobe flash emulator made with ruffle.rs\
+works offline as a file, has compatibilty with both .swf links and files
