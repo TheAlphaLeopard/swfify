@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Floosh | Play Flash Games!</title>
-    <link rel="icon" type="image/svg+xml" href="imgs/favicon.ico">
+    <title>Swfify 🌊</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="imgs/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="imgs/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="imgs/favicon-16x16.png">
+    <link rel="manifest" href="imgs/site.webmanifest">
     <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
     <style>
         body, html {
@@ -74,14 +77,12 @@
     <div id="flash-container"></div>
     <input type="file" id="file-input" accept=".swf">
    
-    <!-- Popup for file/link selection -->
     <div id="selection-popup" class="popup">
         <p>Select an option:</p>
         <button id="file-option">File</button>
         <button id="link-option">Link</button>
     </div>
    
-    <!-- Popup for entering the link -->
     <div id="link-popup" class="popup">
         <p>Enter the SWF file link:</p>
         <input type="text" id="swf-link" placeholder="https://example.com/file.swf">
@@ -95,7 +96,6 @@
             const container = document.getElementById("flash-container");
             container.appendChild(player);
 
-            // Initialize IndexedDB
             let db;
             const request = indexedDB.open("FlashPlayerDB", 1);
             request.onupgradeneeded = event => {
@@ -129,22 +129,13 @@
                 });
             }
 
-            function loadGame(fileData) {
-                try {
-                    const data = new Uint8Array(fileData.split('').map(char => char.charCodeAt(0)));
-                    player.load({ data });
-                } catch (error) {
-                    console.error("Failed to load the SWF file:", error);
-                    alert("Failed to load the SWF file. Please try another file.");
-                }
-            }
-
             async function loadLastGame() {
                 const lastGameName = localStorage.getItem('lastGameName');
                 if (lastGameName) {
                     const fileData = await loadGameFromDB(lastGameName);
                     if (fileData) {
-                        loadGame(fileData);
+                        const data = new Uint8Array(fileData.split('').map(char => char.charCodeAt(0)));
+                        player.load({ data });
                         document.title = lastGameName.replace(/\.swf$/i, '');
                     }
                 }
@@ -175,32 +166,31 @@
             });
 
             document.getElementById('download-link').addEventListener('click', async () => {
-    const link = document.getElementById('swf-link').value;
-    if (link) {
-        try {
-            const response = await fetch(link);
-            if (!response.ok) throw new Error("Network response was not ok");
-            const arrayBuffer = await response.arrayBuffer();
-           
-            // Pass the ArrayBuffer directly to the player
-            player.load({ data: arrayBuffer });
+                const link = document.getElementById('swf-link').value;
+                if (link) {
+                    try {
+                        const response = await fetch(link);
+                        if (!response.ok) throw new Error("Network response was not ok");
+                        const arrayBuffer = await response.arrayBuffer();
+                        
+                        player.load({ data: arrayBuffer });
 
-            const fileName = link.split('/').pop().replace(/\.swf$/i, '');
-            document.title = fileName;
+                        const fileName = link.split('/').pop();
+                        document.title = fileName.replace(/\.swf$/i, '');
 
-            // Save the game as a binary string
-            const binaryString = new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '');
-            await saveGame(fileName + '.swf', binaryString);
-            localStorage.setItem('lastGameName', fileName + '.swf');
-           
-            hidePopup('link-popup');
-        } catch (error) {
-            hidePopup('link-popup'); // Ensure the popup closes on error
-            console.error("Failed to download the SWF file:", error);
-            alert("Failed to download the SWF file. Please check the link and try again.");
-        }
-    }
-});
+                        const binaryString = new Uint8Array(arrayBuffer).reduce((data, byte) => 
+                            data + String.fromCharCode(byte), '');
+                        await saveGame(fileName, binaryString);
+                        localStorage.setItem('lastGameName', fileName);
+                        
+                        hidePopup('link-popup');
+                    } catch (error) {
+                        console.error("Failed to download the SWF file:", error);
+                        alert("Failed to download the SWF file. Please check the link and try again.");
+                        hidePopup('link-popup');
+                    }
+                }
+            });
 
             document.getElementById('file-input').addEventListener('change', (event) => {
                 const file = event.target.files[0];
@@ -209,19 +199,17 @@
                     reader.onload = async (e) => {
                         try {
                             const result = e.target.result;
-                            loadGame(result);
-                            const fileName = file.name.replace(/\.swf$/i, '');
-                            document.title = fileName;
-                            await saveGame(file.name, result); // Save last loaded game to IndexedDB
-                            localStorage.setItem('lastGameName', file.name);
+                            const data = new Uint8Array(result.split('').map(char => char.charCodeAt(0)));
+                            player.load({ data });
+                            
+                            const fileName = file.name;
+                            document.title = fileName.replace(/\.swf$/i, '');
+                            await saveGame(fileName, result);
+                            localStorage.setItem('lastGameName', fileName);
                         } catch (error) {
                             console.error("Failed to load the SWF file:", error);
                             alert("Failed to load the SWF file. Please try another file.");
                         }
-                    };
-                    reader.onerror = (error) => {
-                        console.error("Error reading the file:", error);
-                        alert("Error reading the SWF file. Please try again.");
                     };
                     reader.readAsBinaryString(file);
                 }
